@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+
+# sudo systemctl stop hpccsystems-platform.target
+
+sudo /etc/init.d/hpcc-init stop
+sudo /etc/init.d/dafilesrv stop
+
+

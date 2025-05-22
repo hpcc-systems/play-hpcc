@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+
+set -e
+
+PKG=$1
+
+if [[ ! -f ${PKG} ]]; then
+	echo "Package './${PKG}' not found"
+	exit 1
+fi
+
+hpcc_stop && sudo apt install ./${PKG} && hpcc_start

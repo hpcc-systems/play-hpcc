@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+
+set -e
+
+VERSION=$1
+
+if [[ -z "${VERSION}" ]]; then
+	echo "Please supply a version in the format xx.yy.zz"
+	exit 1
+fi
+
+if [[ ! ${VERSION} =~ -[0-9]+$ ]]; then
+    VERSION="${VERSION}-1"
+fi
+
+wget https://github.com/hpcc-systems/HPCC-Platform/releases/download/community_${VERSION}/hpccsystems-platform-community_${VERSION}focal_amd64_withsymbols.deb

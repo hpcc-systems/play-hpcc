@@ -1,0 +1,76 @@
+#!/usr/bin/env bash
+
+set -e
+
+BIN_DIR=/home/innovate/bin
+HPCC_DATA_DIR=/mnt/data
+HPCC_LOG_DIR=/var/log/HPCCSystems
+TARBALL_PATH=/etc/HPCCSystems/snapshot.tar.gz
+
+CMD="$1"
+
+#------------------------------------------------------
+
+function stop_hpcc
+{
+    ${BIN_DIR}/hpcc_stop
+}
+
+function start_hpcc
+{
+    ${BIN_DIR}/hpcc_start
+}
+
+function delete_hpcc_data
+{
+    sudo rm -rf ${HPCC_DATA_DIR}/* ${HPCC_LOG_DIR}/*
+}
+
+function create_snapshot
+{
+    if [[ -d ${HPCC_DATA_DIR} ]]; then
+        echo -n "Creating snapshot at ${TARBALL_PATH}..."
+        sudo -u hpcc rm -f ${TARBALL_PATH}
+        sudo -u hpcc tar cpzf ${TARBALL_PATH} -C ${HPCC_DATA_DIR} .
+        echo "done."
+    fi
+}
+
+function restore_snapshot
+{
+    if [[ -f ${TARBALL_PATH} ]]; then
+        echo -n "Restoring snapshot from ${TARBALL_PATH}..."
+        sudo mkdir -p ${HPCC_DATA_DIR}
+        sudo chown hpcc:hpcc ${HPCC_DATA_DIR}
+        cd ${HPCC_DATA_DIR}
+        sudo -u hpcc tar xf ${TARBALL_PATH}
+        echo "done."
+    fi
+}
+
+function trim_system_logs
+{
+    echo -n "Trimming system logs..."
+    sudo journalctl -q --vacuum-time=2d
+    echo "done."
+}
+
+#------------------------------------------------------
+
+if [[ "${CMD}" = "create" ]]; then
+    create_snapshot
+elif [[ "${CMD}" = "restore" ]]; then
+    stop_hpcc
+    delete_hpcc_data
+    restore_snapshot
+    start_hpcc
+    trim_system_logs
+elif [[ "${CMD}" = "wipe" ]]; then
+    stop_hpcc
+    delete_hpcc_data
+    start_hpcc
+    trim_system_logs
+else
+    echo "Usage: $0 create | restore | wipe"
+    exit 0
+fi

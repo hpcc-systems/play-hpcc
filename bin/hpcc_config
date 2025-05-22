@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+
+sudo /opt/HPCCSystems/sbin/configmgr
+

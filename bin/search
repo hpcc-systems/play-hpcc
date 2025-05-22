@@ -1,0 +1,14 @@
+#!/bin/sh
+
+ARG1=$1
+ARG2=$2
+
+if test "$ARG1" = ""; then
+	echo "Usage: $0 [DirPath] SearchString"
+else
+	if test "$ARG2" = ""; then
+		find . -iname \*$ARG1\* -ls
+	else
+		find $ARG1 -iname \*$ARG2\* -ls
+	fi
+fi
