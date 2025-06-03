@@ -1,0 +1,5 @@
+#!/bin/bash
+
+cd /usr/local/bin
+./copy_lets_encrypt_certs.sh
+

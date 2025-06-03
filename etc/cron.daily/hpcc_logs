@@ -1,0 +1,9 @@
+#!/bin/bash
+
+FULLDIR=/var/log/HPCCSystems
+DAYS=2
+
+find -L "${FULLDIR}" -type f -mtime +${DAYS} -exec rm {} \;
+
+journalctl --vacuum-time=2d
+
