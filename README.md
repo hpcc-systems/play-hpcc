@@ -124,4 +124,4 @@
     - `apt_update_all.sh`
 - **Install latest HPCC Platform:**
     - `hpcc_fetch <version>`
-    - `hpcc_update <package_file`
+    - `hpcc_upgrade <package_file>`
