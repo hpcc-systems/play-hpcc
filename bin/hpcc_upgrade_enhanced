@@ -1,0 +1,82 @@
+#!/usr/bin/env bash
+
+# Exit on any error, undefined variables, and pipe failures
+set -euo pipefail
+
+PKG=$1
+
+# Validate input parameter
+if [[ -z "${PKG}" ]]; then
+    echo "ERROR: Please supply a package filename" >&2
+    exit 1
+fi
+
+# Check if package file exists
+if [[ ! -f "${PKG}" ]]; then
+    echo "ERROR: Package file '${PKG}' not found" >&2
+    exit 1
+fi
+
+# Verify it's a .deb file
+if [[ ! "${PKG}" =~ \.deb$ ]]; then
+    echo "ERROR: Package file '${PKG}' is not a .deb file" >&2
+    exit 1
+fi
+
+# Check if package file is readable and has reasonable size
+if [[ ! -r "${PKG}" ]]; then
+    echo "ERROR: Cannot read package file '${PKG}'" >&2
+    exit 1
+fi
+
+FILE_SIZE=$(stat -c%s "${PKG}" 2>/dev/null || echo "0")
+if [[ "${FILE_SIZE}" -lt 1000000 ]]; then  # Less than 1MB is suspicious for HPCC
+    echo "ERROR: Package file '${PKG}' is suspiciously small (${FILE_SIZE} bytes)" >&2
+    exit 1
+fi
+
+echo "INFO: Starting HPCC Platform upgrade with package: ${PKG}"
+echo "INFO: Package size: ${FILE_SIZE} bytes"
+
+# Step 1: Stop HPCC services
+echo "INFO: Stopping HPCC services..."
+if ! hpcc_stop; then
+    echo "ERROR: Failed to stop HPCC services" >&2
+    exit 1
+fi
+
+# Step 2: Install the package
+echo "INFO: Installing package ${PKG}..."
+if ! sudo apt install -y "./${PKG}"; then
+    echo "ERROR: Failed to install package ${PKG}" >&2
+    echo "ERROR: Attempting to start HPCC services anyway..." >&2
+    # Try to start services even if install failed
+    if ! hpcc_start; then
+        echo "ERROR: Also failed to restart HPCC services after install failure" >&2
+        exit 1
+    fi
+    exit 1
+fi
+
+# Step 3: Start HPCC services
+echo "INFO: Starting HPCC services..."
+if ! hpcc_start; then
+    echo "ERROR: Failed to start HPCC services after upgrade" >&2
+    echo "ERROR: Package was installed but services could not start" >&2
+    exit 1
+fi
+
+# Step 4: Verify services are running (basic check)
+echo "INFO: Verifying HPCC services..."
+sleep 5  # Give services time to start
+
+# Check if key HPCC processes are running
+if ! pgrep -f "dafilesrv\|daliserv\|dllserver" >/dev/null; then
+    echo "WARNING: Some HPCC processes may not be running properly" >&2
+    echo "WARNING: You may need to check the system manually" >&2
+    # Don't exit with error here as the upgrade itself succeeded
+fi
+
+echo "SUCCESS: HPCC Platform upgrade completed successfully"
+echo "INFO: Upgraded to package: ${PKG}"
+exit 0
