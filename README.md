@@ -1,6 +1,38 @@
 # play.hpccsystems.com
 
+This repository contains scripts and configuration for managing the HPCC Platform on play.hpccsystems.com, including an automated version management system.
+
 ## ~/bin
+
+<details>
+<summary><code>hpcc_fetch_and_upgrade</code></summary>
+<ul>
+    <li><strong>Comprehensive HPCC Platform update automation</strong></li>
+    <li>Fetches latest releases from GitHub API and filters out release candidates</li>
+    <li>Compares versions to identify newest available release</li>
+    <li>Downloads newer versions automatically using <code>hpcc_fetch_enhanced</code></li>
+    <li>Manages file retention (keeps minimum of 3 release files)</li>
+    <li>Executes <code>hpcc_upgrade_enhanced</code> for system updates</li>
+    <li><strong>Features:</strong>
+        <ul>
+            <li>✅ Automatic version detection from GitHub</li>
+            <li>✅ Gold release filtering (excludes rc1, rc2, etc.)</li>
+            <li>✅ Semantic version comparison with revision support</li>
+            <li>✅ Smart file management with retention policy</li>
+            <li>✅ Comprehensive logging with categorized output</li>
+            <li>✅ Robust error handling and graceful failures</li>
+        </ul>
+    </li>
+    <li><strong>Configuration:</strong>
+        <ul>
+            <li>Release Directory: <code>/home/innovate/</code></li>
+            <li>File Pattern: <code>hpccsystems-platform-community_*noble_amd64_withsymbols.deb</code></li>
+            <li>Repository: <code>hpcc-systems/HPCC-Platform</code></li>
+        </ul>
+    </li>
+    <li><strong>Usage:</strong> <code>./hpcc_fetch_and_upgrade</code></li>
+</ul>
+</details>
 
 <details>
 <summary><code>apt_update_all.sh</code></summary>
@@ -32,6 +64,18 @@
 </details>
 
 <details>
+<summary><code>hpcc_fetch_enhanced &lt;version&gt;</code></summary>
+<ul>
+    <li>Enhanced version of hpcc_fetch with robust error handling</li>
+    <li>Download the Ubuntu Noble version of the platform</li>
+    <li>Comprehensive input validation and file verification</li>
+    <li>Automatic retry logic and timeout handling</li>
+    <li>File size validation and cleanup on failure</li>
+    <li>Skip download if file already exists</li>
+</ul>
+</details>
+
+<details>
 <summary><code>hpcc_snapshot &lt;create | restore | wipe&gt;</code></summary>
 <ul>
     <li>Manage archived copies of <code>/lib/HPCCSystems</code></li>
@@ -56,6 +100,18 @@
 <summary><code>hpcc_upgrade &lt;package_path&gt;</code></summary>
 <ul>
     <li>Upgrades the current platform, installing the given package</li>
+</ul>
+</details>
+
+<details>
+<summary><code>hpcc_upgrade_enhanced &lt;package_path&gt;</code></summary>
+<ul>
+    <li>Enhanced version of hpcc_upgrade with comprehensive error handling</li>
+    <li>Validates package file existence, type (.deb), and size</li>
+    <li>Step-by-step error checking for stop/install/start operations</li>
+    <li>Graceful recovery if installation fails</li>
+    <li>Service verification after upgrade completion</li>
+    <li>Detailed progress reporting and error messages</li>
 </ul>
 </details>
 
@@ -119,7 +175,11 @@
 ---
 
 # Periodic Activities
-**Every Friday morning [Can choose any day. Preferably early morning to avoid interruptions]**
+
+**Automated Updates**
+The `hpcc_fetch_and_upgrade` script can be scheduled to run automatically for hands-off HPCC Platform updates.
+
+**Current Manual Updates - Every Friday morning [Can choose any day. Preferably early morning to avoid interruptions]**
 - **Bring OS and packages up to date:**
     - `apt_update_all.sh`
 - **Install latest HPCC Platform:**

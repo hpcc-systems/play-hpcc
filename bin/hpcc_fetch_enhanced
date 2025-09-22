@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+
+# Exit on any error, undefined variables, and pipe failures
+set -euo pipefail
+
+VERSION=$1
+
+if [[ -z "${VERSION}" ]]; then
+	echo "ERROR: Please supply a version in the format xx.yy.zz" >&2
+	exit 1
+fi
+
+# Append -1 if no revision number is present
+if [[ ! ${VERSION} =~ -[0-9]+$ ]]; then
+    VERSION="${VERSION}-1"
+fi
+
+# Check if we're running on the correct Ubuntu version
+UBUNTU_CODENAME=$(lsb_release -cs 2>/dev/null || echo "unknown")
+if [[ "$UBUNTU_CODENAME" != "noble" ]]; then
+    echo "WARNING: This script is designed for Ubuntu Noble. Current: $UBUNTU_CODENAME" >&2
+fi
+
+# Construct the download URL and filename
+DOWNLOAD_URL="https://github.com/hpcc-systems/HPCC-Platform/releases/download/community_${VERSION}/hpccsystems-platform-community_${VERSION}noble_amd64_withsymbols.deb"
+FILENAME="hpccsystems-platform-community_${VERSION}noble_amd64_withsymbols.deb"
+
+echo "INFO: Downloading HPCC Platform version ${VERSION}"
+echo "INFO: URL: ${DOWNLOAD_URL}"
+
+# Check if file already exists
+if [[ -f "${FILENAME}" ]]; then
+    echo "INFO: File ${FILENAME} already exists, skipping download"
+    exit 0
+fi
+
+# Download with wget and proper error handling
+if ! wget --timeout=30 --tries=3 --progress=dot:giga "${DOWNLOAD_URL}"; then
+    echo "ERROR: Failed to download ${FILENAME}" >&2
+    echo "ERROR: Please check if version ${VERSION} exists and you have internet connectivity" >&2
+    exit 1
+fi
+
+# Verify the file was downloaded and has reasonable size
+if [[ ! -f "${FILENAME}" ]]; then
+    echo "ERROR: Download appeared to succeed but file ${FILENAME} not found" >&2
+    exit 1
+fi
+
+FILE_SIZE=$(stat -c%s "${FILENAME}" 2>/dev/null || echo "0")
+if [[ "${FILE_SIZE}" -lt 1000000 ]]; then  # Less than 1MB is suspicious
+    echo "ERROR: Downloaded file ${FILENAME} is suspiciously small (${FILE_SIZE} bytes)" >&2
+    echo "ERROR: This might indicate a download failure or wrong version" >&2
+    rm -f "${FILENAME}"  # Clean up the bad file
+    exit 1
+fi
+
+echo "SUCCESS: Downloaded ${FILENAME} (${FILE_SIZE} bytes)"
+exit 0

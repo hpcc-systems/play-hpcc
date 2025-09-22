@@ -1,0 +1,140 @@
+#!/usr/bin/env bash
+
+# Configuration
+REPO="hpcc-systems/HPCC-Platform"
+PARENT_DIR="/home/innovate/"
+FILE_PATTERN="hpccsystems-platform-community_*noble_amd64_withsymbols.deb"
+
+# Step 1: Fetch the releases from GitHub API
+RELEASES_URL="https://api.github.com/repos/$REPO/releases?per_page=20&page=1"
+echo "[INFO] Fetching releases from GitHub API..."
+RELEASES_JSON=$(curl -s $RELEASES_URL)
+
+# Step 2: Parse and filter releases
+all_tags=$(echo "$RELEASES_JSON" | grep '"name":' | grep -o '"hpccsystems-platform-community_[^"]*noble_amd64_withsymbols\.deb"' | sed -E 's/.*"([^"]+)".*/\1/')
+echo "[INFO] Found $(echo "$all_tags" | wc -l) total releases"
+
+# Step 3: Filter out release candidates
+gold_releases=$(echo "$all_tags" | grep -v "rc[0-9]")
+echo "[INFO] Found $(echo "$gold_releases" | wc -l) gold releases"
+
+# Step 4: Find the latest version
+latest_gold=""
+highest_version=""
+
+while IFS= read -r release; do
+    if [ -n "$release" ]; then
+        version=$(echo "$release" | sed -E 's/hpccsystems-platform-community_([0-9]+\.[0-9]+\.[0-9]+-[0-9]+)noble_amd64_withsymbols\.deb/\1/')
+        
+        if [ -n "$version" ]; then
+            if [ -z "$highest_version" ]; then
+                highest_version="$version"
+                latest_gold="$release"
+            else
+                higher=$(printf "%s\n%s" "$highest_version" "$version" | sort -V | tail -n1)
+                if [ "$higher" = "$version" ] && [ "$version" != "$highest_version" ]; then
+                    highest_version="$version"
+                    latest_gold="$release"
+                fi
+            fi
+        fi
+    fi
+done <<< "$gold_releases"
+
+echo "[INFO] Latest gold release: $latest_gold (version: $highest_version)"
+
+# Step 5: Check existing releases
+existing_releases=$(find "$PARENT_DIR" -name "$FILE_PATTERN" -type f 2>/dev/null | xargs -I {} basename {})
+
+if [ -z "$existing_releases" ]; then
+    echo "[INFO] No existing releases found. Downloading latest version..."
+    should_download=true
+else
+    # Check if latest release already exists
+    if echo "$existing_releases" | grep -q "^$latest_gold$"; then
+        echo "[INFO] Latest release already exists. No update needed."
+        exit 0
+    fi
+    
+    # Find latest existing version
+    latest_existing_version=""
+    
+    while IFS= read -r existing_release; do
+        if [ -n "$existing_release" ] && ! echo "$existing_release" | grep -q "rc[0-9]"; then
+            existing_version=$(echo "$existing_release" | sed -E 's/hpccsystems-platform-community_([0-9]+\.[0-9]+\.[0-9]+-[0-9]+)noble_amd64_withsymbols\.deb/\1/')
+            
+            if [ -n "$existing_version" ]; then
+                if [ -z "$latest_existing_version" ]; then
+                    latest_existing_version="$existing_version"
+                else
+                    higher_existing=$(printf "%s\n%s" "$latest_existing_version" "$existing_version" | sort -V | tail -n1)
+                    if [ "$higher_existing" = "$existing_version" ] && [ "$existing_version" != "$latest_existing_version" ]; then
+                        latest_existing_version="$existing_version"
+                    fi
+                fi
+            fi
+        fi
+    done <<< "$existing_releases"
+    
+    # Compare versions
+    comparison=$(printf "%s\n%s" "$latest_existing_version" "$highest_version" | sort -V | tail -n1)
+    
+    if [ "$comparison" = "$highest_version" ] && [ "$highest_version" != "$latest_existing_version" ]; then
+        echo "[INFO] Found newer version ($highest_version vs $latest_existing_version). Downloading..."
+        should_download=true
+    else
+        echo "[INFO] No newer version available."
+        exit 0
+    fi
+fi
+
+# Step 6: Download and upgrade if needed
+if [ "$should_download" = true ]; then
+    echo "[INFO] Downloading $highest_version..."
+            if hpcc_fetch_enhanced "$highest_version"; then
+        echo "[SUCCESS] Downloaded $latest_gold"
+        
+        # Clean up old files if we have more than 3
+        current_file_count=$(find "$PARENT_DIR" -name "$FILE_PATTERN" -type f 2>/dev/null | wc -l)
+        
+        if [ "$current_file_count" -ge 4 ]; then
+            # Find oldest release to delete
+            oldest_release=""
+            oldest_version=""
+            
+            while IFS= read -r existing_release; do
+                if [ -n "$existing_release" ] && ! echo "$existing_release" | grep -q "rc[0-9]"; then
+                    existing_version=$(echo "$existing_release" | sed -E 's/hpccsystems-platform-community_([0-9]+\.[0-9]+\.[0-9]+-[0-9]+)noble_amd64_withsymbols\.deb/\1/')
+                    
+                    if [ -n "$existing_version" ]; then
+                        if [ -z "$oldest_version" ]; then
+                            oldest_version="$existing_version"
+                            oldest_release="$existing_release"
+                        else
+                            older=$(printf "%s\n%s" "$oldest_version" "$existing_version" | sort -V | head -n1)
+                            if [ "$older" = "$existing_version" ] && [ "$existing_version" != "$oldest_version" ]; then
+                                oldest_version="$existing_version"
+                                oldest_release="$existing_release"
+                            fi
+                        fi
+                    fi
+                fi
+            done <<< "$existing_releases"
+            
+            if [ -n "$oldest_release" ] && [ "$oldest_release" != "$latest_gold" ]; then
+                echo "[INFO] Deleting oldest release: $oldest_release"
+                rm "$PARENT_DIR$oldest_release" 2>/dev/null
+            fi
+        fi
+        
+        # Upgrade HPCC
+        echo "[INFO] Upgrading to version $highest_version..."
+        if hpcc_upgrade_enhanced "$latest_gold"; then
+            echo "[SUCCESS] Successfully upgraded to HPCC version $highest_version"
+        else
+            echo "[ERROR] Failed to upgrade HPCC"
+        fi
+    else
+        echo "[ERROR] Failed to download $latest_gold"
+    fi
+fi
