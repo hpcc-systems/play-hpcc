@@ -72,6 +72,7 @@ This repository contains scripts and configuration for managing the HPCC Platfor
     <li>Automatic retry logic and timeout handling</li>
     <li>File size validation and cleanup on failure</li>
     <li>Skip download if file already exists</li>
+    <li>Downloads to parent directory with dynamic path resolution</li>
 </ul>
 </details>
 
@@ -112,6 +113,7 @@ This repository contains scripts and configuration for managing the HPCC Platfor
     <li>Graceful recovery if installation fails</li>
     <li>Service verification after upgrade completion</li>
     <li>Detailed progress reporting and error messages</li>
+    <li>Uses dynamic path resolution for script dependencies</li>
 </ul>
 </details>
 
@@ -180,8 +182,14 @@ This repository contains scripts and configuration for managing the HPCC Platfor
 The `hpcc_fetch_and_upgrade` script can be scheduled to run automatically for hands-off HPCC Platform updates.
 
 **Current Manual Updates - Every Friday morning [Can choose any day. Preferably early morning to avoid interruptions]**
+
+**Automated Updates**
+The `hpcc_fetch_and_upgrade` script can be scheduled to run automatically for hands-off HPCC Platform updates.
+
+**Current Manual Updates - Every Friday morning [Can choose any day. Preferably early morning to avoid interruptions]**
 - **Bring OS and packages up to date:**
     - `apt_update_all.sh`
 - **Install latest HPCC Platform:**
     - `hpcc_fetch <version>`
+    - `hpcc_upgrade <package_file>`
     - `hpcc_upgrade <package_file>`

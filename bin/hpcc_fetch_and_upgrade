@@ -91,8 +91,8 @@ fi
 # Step 6: Download and upgrade if needed
 if [ "$should_download" = true ]; then
     echo "[INFO] Downloading $highest_version..."
-            if hpcc_fetch_enhanced "$highest_version"; then
-        echo "[SUCCESS] Downloaded $latest_gold"
+        if ${PARENT_DIR}bin/hpcc_fetch_enhanced "$highest_version"; then
+    	echo "[SUCCESS] Downloaded $latest_gold"
         
         # Clean up old files if we have more than 3
         current_file_count=$(find "$PARENT_DIR" -name "$FILE_PATTERN" -type f 2>/dev/null | wc -l)
@@ -129,7 +129,7 @@ if [ "$should_download" = true ]; then
         
         # Upgrade HPCC
         echo "[INFO] Upgrading to version $highest_version..."
-        if hpcc_upgrade_enhanced "$latest_gold"; then
+        if ${PARENT_DIR}bin/hpcc_upgrade_enhanced "$latest_gold"; then
             echo "[SUCCESS] Successfully upgraded to HPCC version $highest_version"
         else
             echo "[ERROR] Failed to upgrade HPCC"
@@ -138,3 +138,4 @@ if [ "$should_download" = true ]; then
         echo "[ERROR] Failed to download $latest_gold"
     fi
 fi
+
